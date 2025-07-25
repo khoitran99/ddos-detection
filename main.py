@@ -320,7 +320,7 @@ def preprocess_network_data(network_dataframe):
 # Select optimal features using multiple methods to ensure robust feature selection
 # that captures different types of relationships between features and target.
 
-def select_best_features_ensemble(preprocessed_network_data, number_of_features=30):
+def select_best_features_ensemble(preprocessed_network_data, number_of_features=10):
     """
     STEP 6A: Remove highly correlated features
     STEP 6B: Remove zero-variance features
@@ -359,8 +359,8 @@ def select_best_features_ensemble(preprocessed_network_data, number_of_features=
     mutual_info_selector.fit(decorrelated_feature_matrix[selected_variance_columns], target_labels)
     mutual_info_scores = mutual_info_selector.scores_
 
-    # STEP 6E: Tree-based feature importance method
-    random_forest_selector = RandomForestClassifier(n_estimators=50, random_state=42, n_jobs=-1)
+    # STEP 6E: Tree-based feature importance method (faster: n_estimators=20)
+    random_forest_selector = RandomForestClassifier(n_estimators=20, random_state=42, n_jobs=-1)
     random_forest_selector.fit(decorrelated_feature_matrix[selected_variance_columns], target_labels)
     tree_importance_scores = random_forest_selector.feature_importances_
 
@@ -455,7 +455,7 @@ def standardize_and_balance_data(feature_matrix, target_labels, balancing_method
     final_target_labels = shuffled_balanced_dataset['target'].values
 
     print(f"After balancing: {pd.Series(final_target_labels).value_counts()}")
-    return final_feature_matrix, final_target_labels
+    return final_feature_matrix, final_target_labels, feature_scaler
 
 # ================================================================================
 # MAIN EXECUTION PIPELINE
@@ -476,12 +476,12 @@ print("✅ STEP 2-5 COMPLETED: Data preprocessing successful")
 print("=" * 80)
 
 # STEP 6: Select optimal features using ensemble methods
-selected_features_matrix, selected_feature_names, target_labels = select_best_features_ensemble(preprocessed_network_data, number_of_features=30)
+selected_features_matrix, selected_feature_names, target_labels = select_best_features_ensemble(preprocessed_network_data, number_of_features=10)
 print("✅ STEP 6 COMPLETED: Feature selection successful")
 print("=" * 80)
 
 # STEP 7: Standardize and balance data for ML training
-balanced_feature_matrix, balanced_target_labels = standardize_and_balance_data(selected_features_matrix, target_labels, balancing_method="undersample")
+balanced_feature_matrix, balanced_target_labels, feature_scaler = standardize_and_balance_data(selected_features_matrix, target_labels, balancing_method="undersample")
 print("✅ STEP 7 COMPLETED: Data standardization and balancing successful")
 print("=" * 80)
 
@@ -491,3 +491,183 @@ print(f"📊 Final dataset shape: {balanced_feature_matrix.shape}")
 print(f"📋 Selected features: {len(selected_feature_names)}")
 print("🚀 Dataset is now ready for model training!")
 print("=" * 80)
+
+# ==============================================================================
+# STEP 8: RANDOM FOREST MODEL TRAINING & EVALUATION
+# ==============================================================================
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, classification_report
+
+# Split the data into train and test sets
+X_train, X_test, y_train, y_test = train_test_split(
+    balanced_feature_matrix, balanced_target_labels, test_size=0.2, random_state=42
+)
+
+# Train Random Forest
+rf_model = RandomForestClassifier(random_state=42)
+rf_model.fit(X_train, y_train)
+
+# Predict
+y_pred_rf = rf_model.predict(X_test)
+
+# Evaluate
+print("\n================ Random Forest Results ================")
+print(f"Accuracy:  {accuracy_score(y_test, y_pred_rf):.4f}")
+print(f"Precision: {precision_score(y_test, y_pred_rf):.4f}")
+print(f"Recall:    {recall_score(y_test, y_pred_rf):.4f}")
+print(f"F1 Score:  {f1_score(y_test, y_pred_rf):.4f}")
+print("Confusion Matrix:")
+print(confusion_matrix(y_test, y_pred_rf))
+print("Classification Report:")
+print(classification_report(y_test, y_pred_rf))
+print("======================================================\n")
+
+# ======================================================================
+# STEP 9: DECISION TREE MODEL TRAINING & EVALUATION
+# ======================================================================
+from sklearn.tree import DecisionTreeClassifier
+
+dt_model = DecisionTreeClassifier(random_state=42)
+dt_model.fit(X_train, y_train)
+
+y_pred_dt = dt_model.predict(X_test)
+
+print("\n================ Decision Tree Results ================")
+print(f"Accuracy:  {accuracy_score(y_test, y_pred_dt):.4f}")
+print(f"Precision: {precision_score(y_test, y_pred_dt):.4f}")
+print(f"Recall:    {recall_score(y_test, y_pred_dt):.4f}")
+print(f"F1 Score:  {f1_score(y_test, y_pred_dt):.4f}")
+print("Confusion Matrix:")
+print(confusion_matrix(y_test, y_pred_dt))
+print("Classification Report:")
+print(classification_report(y_test, y_pred_dt))
+print("======================================================\n")
+
+# ======================================================================
+# STEP 10: KNN MODEL TRAINING & EVALUATION
+# ======================================================================
+from sklearn.neighbors import KNeighborsClassifier
+
+knn_model = KNeighborsClassifier()
+knn_model.fit(X_train, y_train)
+
+y_pred_knn = knn_model.predict(X_test)
+
+print("\n================ KNN Results ================")
+print(f"Accuracy:  {accuracy_score(y_test, y_pred_knn):.4f}")
+print(f"Precision: {precision_score(y_test, y_pred_knn):.4f}")
+print(f"Recall:    {recall_score(y_test, y_pred_knn):.4f}")
+print(f"F1 Score:  {f1_score(y_test, y_pred_knn):.4f}")
+print("Confusion Matrix:")
+print(confusion_matrix(y_test, y_pred_knn))
+print("Classification Report:")
+print(classification_report(y_test, y_pred_knn))
+print("======================================================\n")
+
+# ======================================================================
+# STEP 11: SVM MODEL TRAINING & EVALUATION
+# ======================================================================
+from sklearn.svm import SVC
+
+svm_model = SVC(random_state=42)
+svm_model.fit(X_train, y_train)
+
+y_pred_svm = svm_model.predict(X_test)
+
+print("\n================ SVM Results ================")
+print(f"Accuracy:  {accuracy_score(y_test, y_pred_svm):.4f}")
+print(f"Precision: {precision_score(y_test, y_pred_svm):.4f}")
+print(f"Recall:    {recall_score(y_test, y_pred_svm):.4f}")
+print(f"F1 Score:  {f1_score(y_test, y_pred_svm):.4f}")
+print("Confusion Matrix:")
+print(confusion_matrix(y_test, y_pred_svm))
+print("Classification Report:")
+print(classification_report(y_test, y_pred_svm))
+print("======================================================\n")
+
+# ======================================================================
+# STEP 13: FINAL MODEL SELECTION AND SAVING
+# ======================================================================
+import joblib
+
+# Compare F1 scores of all tuned models
+model_scores = {
+    'Random Forest': f1_score(y_test, y_pred_rf),
+    'Decision Tree': f1_score(y_test, y_pred_dt),
+    'KNN': f1_score(y_test, y_pred_knn),
+    'SVM': f1_score(y_test, y_pred_svm)
+}
+best_model_name = max(model_scores, key=model_scores.get)
+print(f'\n🏆 Best model by F1 score: {best_model_name} ({model_scores[best_model_name]:.4f})')
+
+# Map model name to estimator
+best_model_map = {
+    'Random Forest': rf_model,
+    'Decision Tree': dt_model,
+    'KNN': knn_model,
+    'SVM': svm_model
+}
+best_model = best_model_map[best_model_name]
+
+# Save the best model and scaler
+joblib.dump(best_model, 'ddos_best_model.joblib')
+print(f'✅ Saved best model as ddos_best_model.joblib')
+
+# Save the scaler (from standardize_and_balance_data)
+try:
+    joblib.dump(feature_scaler, 'ddos_scaler.joblib')
+    print('✅ Saved scaler as ddos_scaler.joblib')
+except Exception as e:
+    print('⚠️ Could not save scaler:', e)
+
+# # ======================================================================
+# # STEP 12: VISUALIZE MODEL PERFORMANCE
+# # ======================================================================
+# import matplotlib.pyplot as plt
+# import seaborn as sns
+
+# # Collect metrics for all models
+# def get_metrics(y_true, y_pred):
+#     return {
+#         'Accuracy': accuracy_score(y_true, y_pred),
+#         'Precision': precision_score(y_true, y_pred),
+#         'Recall': recall_score(y_true, y_pred),
+#         'F1 Score': f1_score(y_true, y_pred)
+#     }
+
+# metrics_dict = {
+#     'Random Forest': get_metrics(y_test, y_pred_rf),
+#     'Decision Tree': get_metrics(y_test, y_pred_dt),
+#     'KNN': get_metrics(y_test, y_pred_knn),
+#     'SVM': get_metrics(y_test, y_pred_svm)
+# }
+
+# # Bar chart for metrics
+# metrics_df = pd.DataFrame(metrics_dict).T
+# plt.figure(figsize=(10, 6))
+# metrics_df.plot(kind='bar', rot=0)
+# plt.title('Model Performance Comparison')
+# plt.ylabel('Score')
+# plt.ylim(0, 1)
+# plt.legend(loc='lower right')
+# plt.tight_layout()
+# plt.show()
+
+# # Confusion matrix heatmaps
+# model_preds = {
+#     'Random Forest': y_pred_rf,
+#     'Decision Tree': y_pred_dt,
+#     'KNN': y_pred_knn,
+#     'SVM': y_pred_svm
+# }
+
+# for model_name, y_pred in model_preds.items():
+#     cm = confusion_matrix(y_test, y_pred)
+#     plt.figure(figsize=(4, 3))
+#     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
+#     plt.title(f'Confusion Matrix: {model_name}')
+#     plt.xlabel('Predicted')
+#     plt.ylabel('Actual')
+#     plt.tight_layout()
+#     plt.show()
